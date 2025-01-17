@@ -47,4 +47,13 @@ export class ProductService {
     return await this.putProduct(id, product);
   }
 
+  async updateProductNameWithSubCategory(id: string, newSubcategory: string): Promise<Product> {
+    const product: Product = await this.getProductById(id);
+
+    const productName = product.fullName.split('_')[0];
+    product.fullName = productName.concat('_' + newSubcategory);
+
+    return this.updateProduct(id, product);
+  }
+
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
 import { Product } from '../product/product';
 import { ProductService } from './product.service';
 import { ProductDTO } from './productDto';
@@ -21,6 +21,12 @@ export class ProductController {
  @Put(":id")
   updateProduct(@Param('id') id, @Body() product: ProductDTO): Promise<Product> {
     return this.productService.updateProduct(id, product);
+  }
+
+  @Put(":id/subcategory")
+  updateProductSubcategory(@Param('id') id,
+                           @Body('newSubcategory') newSubcategory: string): Promise<Product> {
+    return this.productService.updateProductNameWithSubCategory(id, newSubcategory);
   }
 
 }
