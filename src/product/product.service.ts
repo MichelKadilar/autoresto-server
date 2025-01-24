@@ -26,13 +26,13 @@ export class ProductService {
     return response.data;
   }
 
-  private async fetchDataById(id: number): Promise<Product> {
+  private async fetchDataById(id: string): Promise<Product> {
     const response$ = this.httpService.get(`http://localhost:3000/menus/${id}`);
     const response = await lastValueFrom(response$);
     return response.data;
   }
 
-  private async putProduct(id: number, product: Product): Promise<Product> {
+  private async putProduct(id: string, product: Product): Promise<Product> {
     const response$ = this.httpService.put(`http://localhost:3000/menus/${id}`, product);
     const response = await lastValueFrom(response$);
     return response.data;
@@ -53,24 +53,21 @@ export class ProductService {
   }
 
   async getProductById(id: number): Promise<ProductDTO> {
-    const cachedProduct: ProductDTO[] = await this.cacheService.getCachedProducts();
+    const cachedProduct: ProductDTO = await this.cacheService.getCachedProduct(id);
     if (cachedProduct) {
-      return cachedProduct.find((product) => product.id === id);
+      return cachedProduct;
     }
-
-    const product: Product = await this.fetchDataById(id);
-    const productDto = this.productUtilService.convertProductToProductDTO(product);
-    await this.cacheService.cacheProduct(productDto);
-    return productDto;
+    return null;
   }
 
-  async updateProduct(id: number, productDto: ProductDTO): Promise<ProductDTO | null> {
+  async updateProduct(productDto: ProductDTO): Promise<ProductDTO | null> {
     const product: Product = this.productUtilService.convertProductDtoToProduct(productDto);
-    const updatedProduct = await this.putProduct(id, product);
+    const updatedProduct = await this.putProduct(product._id, product);
     if (updatedProduct._id === product._id) {
       const updatedDto = this.productUtilService.convertProductToProductDTO(updatedProduct);
+      updatedDto.id = productDto.id;
       await this.cacheService.cacheProduct(updatedDto);
-      await this.productRepository.save(
+      await this.productRepository.update(productDto.id,
         this.productUtilService.convertProductDtoToProductEntity(updatedDto),
       );
       return updatedDto;
@@ -79,23 +76,28 @@ export class ProductService {
   }
 
   async updateProductNameWithSubCategory(id: number, newSubcategory: string): Promise<ProductDTO> {
-    const product: Product = await this.fetchDataById(id);
+    const cachedProduct: ProductDTO = await this.cacheService.getCachedProduct(id);
+    if (cachedProduct) {
+      const product: Product = await this.fetchDataById(cachedProduct.backendId);
 
-    const [name] = product.fullName.includes('_')
-      ? product.fullName.split('_')
-      : [product.fullName];
+      const [name] = product.fullName.includes('_')
+        ? product.fullName.split('_')
+        : [product.fullName];
 
-    const productDto: ProductDTO = {
-      id: id,
-      fullName: name,
-      shortName: product.shortName,
-      subcategory: newSubcategory,
-      price: product.price,
-      category: product.category,
-      image: product.image,
-      backendId: product._id,
-    };
+      const productDto: ProductDTO = {
+        id: id,
+        fullName: name,
+        shortName: product.shortName,
+        subcategory: newSubcategory,
+        price: product.price,
+        category: product.category,
+        image: product.image,
+        backendId: product._id,
+      };
 
-    return this.updateProduct(id, productDto);
+      return this.updateProduct(productDto);
+    }
+
+
   }
 }

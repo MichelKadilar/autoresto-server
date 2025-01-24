@@ -27,10 +27,17 @@ export class CacheService {
 
   async cacheProducts(products: ProductDTO[]) {
     await this.cacheManager.set('products', products);
+    for (const product of products) {
+      await this.cacheProduct(product);
+    }
   }
 
   async cacheProduct(product: ProductDTO) {
     await this.cacheManager.set(String(product.id), product);
+  }
+
+  async getCachedProduct(id: number): Promise<ProductDTO | null> {
+    return await this.cacheManager.get(String(id));
   }
 
   async getCachedProducts(): Promise<ProductDTO[] | null> {

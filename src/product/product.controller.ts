@@ -13,17 +13,17 @@ export class ProductController {
   }
 
   @Get(':id')
-  getProductById(@Param('id') id): Promise<ProductDTO> {
+  getProductById(@Param('id') id: number): Promise<ProductDTO> {
     return this.productService.getProductById(id);
   }
 
-  @Put(':id')
-  updateProduct(@Param('id') id, @Body() product: ProductDTO): Promise<ProductDTO> {
-    return this.productService.updateProduct(id, product);
+  @Put()
+  updateProduct(@Body() product: ProductDTO): Promise<ProductDTO> {
+    return this.productService.updateProduct(product);
   }
 
   @Put(':id/subcategory')
-  updateProductSubcategory(@Param('id') id,
+  updateProductSubcategory(@Param('id') id: number,
                            @Body('newSubcategory') newSubcategory: string): Promise<ProductDTO> {
     return this.productService.updateProductNameWithSubCategory(id, newSubcategory);
   }
