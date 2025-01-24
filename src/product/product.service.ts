@@ -3,11 +3,19 @@ import { Product } from '../product/product';
 import { HttpService } from '@nestjs/axios';
 import { lastValueFrom } from 'rxjs';
 import { ProductDTO } from './productDto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ProductEntity } from './product.entity';
+import { CacheService } from '../cache/cache.service';
 
 @Injectable()
 export class ProductService {
-
-  constructor(private readonly httpService: HttpService) {
+  constructor(
+    private readonly httpService: HttpService,
+    @InjectRepository(ProductEntity)
+    private readonly productRepository: Repository<ProductEntity>,
+    private readonly cacheService: CacheService,
+  ) {
   }
 
   private async fetchData(): Promise<Product[]> {
@@ -30,19 +38,40 @@ export class ProductService {
 
   async getAllProducts(): Promise<ProductDTO[]> {
     const products: Product[] = await this.fetchData();
-    return products.map((product) => this.convertProductToProductDTO(product));
+    const productDTOs: ProductDTO[] = products.map((product) => this.convertProductToProductDTO(product));
+    const productEntities = productDTOs.map((dto) => this.convertProductDtoToProductEntity(dto));
+    const savedProductEntities = await this.productRepository.save(productEntities);
+
+    for (let i = 0; i < savedProductEntities.length; i++) {
+      productDTOs[i].id = savedProductEntities[i].id;
+    }
+    await this.cacheService.cacheProducts(productDTOs);
+
+    return productDTOs;
   }
 
   async getProductById(id: string): Promise<ProductDTO> {
+    const cachedProduct: ProductDTO[] = await this.cacheService.getCachedProducts();
+    if (cachedProduct) {
+      return cachedProduct.find((product) => product.id === id);
+    }
+
     const product: Product = await this.fetchDataById(id);
-    return this.convertProductToProductDTO(product);
+    const productDto = this.convertProductToProductDTO(product);
+    await this.cacheService.cacheProduct(productDto);
+    return productDto;
   }
 
   async updateProduct(id: string, productDto: ProductDTO): Promise<ProductDTO | null> {
     const product: Product = this.convertProductDtoToProduct(productDto);
     const updatedProduct = await this.putProduct(id, product);
-    if (updatedProduct.fullName === product.fullName) {
-      return this.convertProductToProductDTO(updatedProduct);
+    if (updatedProduct._id === product._id) {
+      const updatedDto = this.convertProductToProductDTO(updatedProduct);
+      await this.cacheService.cacheProduct(updatedDto);
+      await this.productRepository.save(
+        this.convertProductDtoToProductEntity(updatedDto),
+      );
+      return updatedDto;
     }
     return null;
   }
@@ -62,11 +91,11 @@ export class ProductService {
       price: product.price,
       category: product.category,
       image: product.image,
+      backendId: product._id,
     };
 
     return this.updateProduct(id, productDto);
   }
-
 
   private convertProductToProductDTO(product: Product): ProductDTO {
     if (!product.fullName) {
@@ -76,16 +105,16 @@ export class ProductService {
     const [name, subcategory] = product.fullName.split('_');
 
     return {
-      id: product._id,
+      id: null,
       fullName: name || product.fullName,
       subcategory: subcategory || 'none',
       shortName: product.shortName,
       price: product.price,
       category: product.category,
       image: product.image,
+      backendId: product._id,
     };
   }
-
 
   private convertProductDtoToProduct(productDto: ProductDTO): Product {
     const fullName = productDto.subcategory && productDto.subcategory !== 'none'
@@ -100,5 +129,18 @@ export class ProductService {
       category: productDto.category,
       image: productDto.image,
     };
+  }
+
+  private convertProductDtoToProductEntity(productDto: ProductDTO): ProductEntity {
+    const productEntity = new ProductEntity();
+    productEntity.id = productDto.id;
+    productEntity.fullName = productDto.fullName;
+    productEntity.shortName = productDto.shortName;
+    productEntity.price = productDto.price;
+    productEntity.category = productDto.category;
+    productEntity.subcategory = productDto.subcategory;
+    productEntity.image = productDto.image;
+    productEntity.backendProductId = productDto.backendId;
+    return productEntity;
   }
 }
