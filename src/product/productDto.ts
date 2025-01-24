@@ -6,4 +6,5 @@ export interface ProductDTO {
   category: 'STARTER' | 'MAIN' | 'DESSERT' | 'BEVERAGE';
   subcategory: string;
   image: string;
+  backendId: string;
 }
