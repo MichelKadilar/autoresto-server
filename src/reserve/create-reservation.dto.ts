@@ -1,7 +1,6 @@
 import { ProductDTO } from '../product/productDto';
 
-export interface ReservationDTO {
-  id: number;
+export interface CreateReservationDTO {
   datetime: Date;
   products: ProductDTO[];
 }

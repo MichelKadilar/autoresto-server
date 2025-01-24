@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductEntity } from './product.entity';
 import { CacheService } from '../cache/cache.service';
+import { ProductUtilService } from './product-util.service';
 
 @Injectable()
 export class ProductService {
@@ -15,6 +16,7 @@ export class ProductService {
     @InjectRepository(ProductEntity)
     private readonly productRepository: Repository<ProductEntity>,
     private readonly cacheService: CacheService,
+    private readonly productUtilService: ProductUtilService,
   ) {
   }
 
@@ -24,13 +26,13 @@ export class ProductService {
     return response.data;
   }
 
-  private async fetchDataById(id: string): Promise<Product> {
+  private async fetchDataById(id: number): Promise<Product> {
     const response$ = this.httpService.get(`http://localhost:3000/menus/${id}`);
     const response = await lastValueFrom(response$);
     return response.data;
   }
 
-  private async putProduct(id: string, product: Product): Promise<Product> {
+  private async putProduct(id: number, product: Product): Promise<Product> {
     const response$ = this.httpService.put(`http://localhost:3000/menus/${id}`, product);
     const response = await lastValueFrom(response$);
     return response.data;
@@ -38,8 +40,8 @@ export class ProductService {
 
   async getAllProducts(): Promise<ProductDTO[]> {
     const products: Product[] = await this.fetchData();
-    const productDTOs: ProductDTO[] = products.map((product) => this.convertProductToProductDTO(product));
-    const productEntities = productDTOs.map((dto) => this.convertProductDtoToProductEntity(dto));
+    const productDTOs: ProductDTO[] = products.map((product) => this.productUtilService.convertProductToProductDTO(product));
+    const productEntities = productDTOs.map((dto) => this.productUtilService.convertProductDtoToProductEntity(dto));
     const savedProductEntities = await this.productRepository.save(productEntities);
 
     for (let i = 0; i < savedProductEntities.length; i++) {
@@ -50,33 +52,33 @@ export class ProductService {
     return productDTOs;
   }
 
-  async getProductById(id: string): Promise<ProductDTO> {
+  async getProductById(id: number): Promise<ProductDTO> {
     const cachedProduct: ProductDTO[] = await this.cacheService.getCachedProducts();
     if (cachedProduct) {
       return cachedProduct.find((product) => product.id === id);
     }
 
     const product: Product = await this.fetchDataById(id);
-    const productDto = this.convertProductToProductDTO(product);
+    const productDto = this.productUtilService.convertProductToProductDTO(product);
     await this.cacheService.cacheProduct(productDto);
     return productDto;
   }
 
-  async updateProduct(id: string, productDto: ProductDTO): Promise<ProductDTO | null> {
-    const product: Product = this.convertProductDtoToProduct(productDto);
+  async updateProduct(id: number, productDto: ProductDTO): Promise<ProductDTO | null> {
+    const product: Product = this.productUtilService.convertProductDtoToProduct(productDto);
     const updatedProduct = await this.putProduct(id, product);
     if (updatedProduct._id === product._id) {
-      const updatedDto = this.convertProductToProductDTO(updatedProduct);
+      const updatedDto = this.productUtilService.convertProductToProductDTO(updatedProduct);
       await this.cacheService.cacheProduct(updatedDto);
       await this.productRepository.save(
-        this.convertProductDtoToProductEntity(updatedDto),
+        this.productUtilService.convertProductDtoToProductEntity(updatedDto),
       );
       return updatedDto;
     }
     return null;
   }
 
-  async updateProductNameWithSubCategory(id: string, newSubcategory: string): Promise<ProductDTO> {
+  async updateProductNameWithSubCategory(id: number, newSubcategory: string): Promise<ProductDTO> {
     const product: Product = await this.fetchDataById(id);
 
     const [name] = product.fullName.includes('_')
@@ -95,52 +97,5 @@ export class ProductService {
     };
 
     return this.updateProduct(id, productDto);
-  }
-
-  private convertProductToProductDTO(product: Product): ProductDTO {
-    if (!product.fullName) {
-      throw new Error(`Invalid fullName format for product with ID: ${product._id}`);
-    }
-
-    const [name, subcategory] = product.fullName.split('_');
-
-    return {
-      id: null,
-      fullName: name || product.fullName,
-      subcategory: subcategory || 'none',
-      shortName: product.shortName,
-      price: product.price,
-      category: product.category,
-      image: product.image,
-      backendId: product._id,
-    };
-  }
-
-  private convertProductDtoToProduct(productDto: ProductDTO): Product {
-    const fullName = productDto.subcategory && productDto.subcategory !== 'none'
-      ? `${productDto.fullName}_${productDto.subcategory}`
-      : productDto.fullName;
-
-    return {
-      _id: productDto.id,
-      fullName: fullName,
-      shortName: productDto.shortName,
-      price: productDto.price,
-      category: productDto.category,
-      image: productDto.image,
-    };
-  }
-
-  private convertProductDtoToProductEntity(productDto: ProductDTO): ProductEntity {
-    const productEntity = new ProductEntity();
-    productEntity.id = productDto.id;
-    productEntity.fullName = productDto.fullName;
-    productEntity.shortName = productDto.shortName;
-    productEntity.price = productDto.price;
-    productEntity.category = productDto.category;
-    productEntity.subcategory = productDto.subcategory;
-    productEntity.image = productDto.image;
-    productEntity.backendProductId = productDto.backendId;
-    return productEntity;
   }
 }

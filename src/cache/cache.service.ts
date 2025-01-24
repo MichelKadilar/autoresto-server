@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Cache } from 'cache-manager';
 import { ReservationDTO } from '../reserve/reservation.dto';
 import { ProductDTO } from '../product/productDto';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 @Injectable()
 export class CacheService {
-  constructor(private readonly cacheManager: Cache) {
+  constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {
   }
 
   async cacheReservations(reservations: ReservationDTO[]) {
@@ -13,7 +14,7 @@ export class CacheService {
   }
 
   async cacheReservation(reservation: ReservationDTO) {
-    await this.cacheManager.set(reservation.id, reservation);
+    await this.cacheManager.set(String(reservation.id), reservation);
   }
 
   async getCachedReservations(): Promise<ReservationDTO[] | null> {
@@ -29,7 +30,7 @@ export class CacheService {
   }
 
   async cacheProduct(product: ProductDTO) {
-    await this.cacheManager.set(product.id, product);
+    await this.cacheManager.set(String(product.id), product);
   }
 
   async getCachedProducts(): Promise<ProductDTO[] | null> {

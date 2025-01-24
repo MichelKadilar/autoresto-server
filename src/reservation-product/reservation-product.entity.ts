@@ -1,19 +1,26 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Reservation } from '../reserve/reservation.entity';
+import { ProductEntity } from '../product/product.entity';
 
 @Entity()
 export class ReservationProductEntity {
 
   @PrimaryGeneratedColumn()
-  id: string;
+  id: number;
 
   @Column()
-  productBffId: string;
+  productBffId: number;
 
   @Column()
-  reservationId: string;
+  reservationId: number;
 
-  @ManyToOne(() => Reservation, (Reservation) => Reservation.id, { cascade: true })
-  @JoinColumn({ name: 'reservationId' })
+  @ManyToOne(() => ProductEntity, (product) => product.id, { eager: true, cascade: true })
+  @JoinColumn({ name: 'productBffId', referencedColumnName: 'id' })
+  product: ProductEntity;
+
+  @ManyToOne(() => Reservation, (reservation) => reservation.id, { eager: true, cascade: true })
+  @JoinColumn({ name: 'reservationId', referencedColumnName: 'id' })
   reservation: Reservation;
+
+
 }

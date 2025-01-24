@@ -1,18 +1,10 @@
-import { Column, Entity, JoinColumn, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { ProductEntity } from '../product/product.entity';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Reservation {
   @PrimaryGeneratedColumn()
-  id: string;
+  id: number;
 
   @Column()
   datetime: Date;
-
-  @Column()
-  productId: string;
-
-  @OneToMany(() => ProductEntity, (ProductEntity) => ProductEntity.id, { cascade: true })
-  @JoinColumn({ name: 'productId' })
-  product: ProductEntity;
 }
