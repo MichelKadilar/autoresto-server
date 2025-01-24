@@ -66,6 +66,7 @@ export class ReservationService {
 
     if (createReservationDto.products && createReservationDto.products.length > 0) {
       const savedReservation: Reservation = this.reservationRepository.create(createReservationDto);
+      await this.reservationRepository.save(savedReservation);
 
       const productsIds: number[] = createReservationDto.products.map(p => p.id);
       await this.reservationProductService.saveProductsOfReservation(productsIds, savedReservation.id);
