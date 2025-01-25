@@ -40,13 +40,33 @@ export class ProductService {
 
   async getAllProducts(): Promise<ProductDTO[]> {
     const products: Product[] = await this.fetchData();
-    const productDTOs: ProductDTO[] = products.map((product) => this.productUtilService.convertProductToProductDTO(product));
-    const productEntities = productDTOs.map((dto) => this.productUtilService.convertProductDtoToProductEntity(dto));
-    const savedProductEntities = await this.productRepository.save(productEntities);
 
-    for (let i = 0; i < savedProductEntities.length; i++) {
-      productDTOs[i].id = savedProductEntities[i].id;
+    const productDTOs: ProductDTO[] = products.map((product) =>
+      this.productUtilService.convertProductToProductDTO(product),
+    );
+
+    const existingProducts = await this.productRepository.find({
+      where: productDTOs.map((dto) => ({ backendProductId: dto.backendId })),
+    });
+
+    const existingBackendIdMap = new Map(
+      existingProducts.map((product) => [product.backendProductId, product]),
+    );
+
+    for (const dto of productDTOs) {
+      const existingProduct = existingBackendIdMap.get(dto.backendId);
+
+      if (existingProduct) {
+        dto.id = existingProduct.id;
+        const productEntity = this.productUtilService.convertProductDtoToProductEntity(dto);
+        await this.productRepository.update(productEntity.id, productEntity);
+      } else {
+        const productEntity = this.productUtilService.convertProductDtoToProductEntity(dto);
+        const savedProductEntity = await this.productRepository.save(productEntity);
+        dto.id = savedProductEntity.id;
+      }
     }
+
     await this.cacheService.cacheProducts(productDTOs);
 
     return productDTOs;
