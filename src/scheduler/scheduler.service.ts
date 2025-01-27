@@ -34,6 +34,8 @@ export class SchedulerService {
 
   async executeScheduledMethod(reservation: ReservationDTO) {
     console.log('Réservation traitée', reservation);
-    // TODO : paiement
+    // TODO : GET /tables
+    // TODO : POST /tableOrders
+    // TODO : POST /tableOrders/{tableOrderId}
   }
 }

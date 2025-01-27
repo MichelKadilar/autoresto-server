@@ -23,7 +23,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     TypeOrmModule.forRoot({
       type: 'sqlite',
       database: 'database.sqlite',
-      entities: [Reservation, ReservationProductEntity, ProductEntity], // TODO : add other entities
+      entities: [Reservation, ReservationProductEntity, ProductEntity],
       synchronize: true,
     }),
   ],
